@@ -309,7 +309,7 @@
             }
         });
 
-        // Logika pengiriman data LANGSUNG ke API Magnific
+        // Logika pengiriman data LANGSUNG ke API Magnific (Bypass Vercel Limit)
         const generateBtn = document.getElementById('generate-btn');
         const btnText = document.getElementById('btn-text');
         const resultSection = document.getElementById('result-section');
@@ -334,10 +334,10 @@
                 return;
             }
 
-            // Pengecekan ukuran file di frontend agar tidak membuang kuota
+            // Pengecekan ukuran file di frontend agar tidak membuang kuota/waktu
             const totalSize = imageFile.size + videoFile.size;
             if (totalSize > 115 * 1024 * 1024) {
-                alert('Total ukuran file terlalu besar! Maksimal 115MB.');
+                alert('Total ukuran file terlalu besar! Maksimal 115MB (Gambar + Video).');
                 return;
             }
 
@@ -353,8 +353,8 @@
                 formData.append('image', imageFile);
                 formData.append('video', videoFile);
 
-                // TEMBAK LANGSUNG KE MAGNIFIC
-                const magnificApiUrl = 'https://api.magnific.ai/v1/motion'; // GANTI JIKA URL-NYA BEDA
+                // TEMBAK LANGSUNG KE ENDPOINT MAGNIFIC
+                const magnificApiUrl = 'https://api.magnific.ai/v1/motion'; 
 
                 const response = await fetch(magnificApiUrl, {
                     method: 'POST',
@@ -364,14 +364,14 @@
                     body: formData
                 });
 
-                // Membaca response sebagai text dulu untuk mencegah error "Unexpected token"
+                // Membaca response sebagai text dulu untuk mencegah error JSON
                 const textResponse = await response.text();
                 let result;
                 
                 try {
                     result = JSON.parse(textResponse);
                 } catch (e) {
-                    throw new Error(`Server API merespons dengan format salah: ${textResponse.substring(0, 50)}...`);
+                    throw new Error(`Server API merespons dengan format salah: ${textResponse.substring(0, 80)}...`);
                 }
 
                 resultSection.classList.remove('hidden');
@@ -380,6 +380,7 @@
                     throw new Error(result.message || result.error || `HTTP Error ${response.status}`);
                 }
                 
+                // Tampilan Berhasil
                 resultTitle.textContent = "Pipeline Berhasil Dibuat!";
                 resultTitle.className = "text-lg font-bold text-green-400 mb-2";
                 resultSubtitle.textContent = "Task sedang diproses oleh server Magnific.";
@@ -399,6 +400,7 @@
             } catch (error) {
                 console.error('Error generating video:', error);
                 
+                // Tampilan Error
                 resultSection.classList.remove('hidden');
                 resultTitle.textContent = "Error System";
                 resultTitle.className = "text-lg font-bold text-red-500 mb-2";
@@ -415,3 +417,6 @@
                 btnText.innerHTML = 'Initialize Generation Pipeline';
             }
         });
+    </script>
+</body>
+</html>
