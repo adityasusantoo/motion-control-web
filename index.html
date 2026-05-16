@@ -275,7 +275,6 @@
     </footer>
 
     <script>
-        // Update CFG Scale slider value live
         const cfgSlider = document.getElementById('cfg-slider');
         const cfgValue = document.getElementById('cfg-value');
         
@@ -283,7 +282,6 @@
             cfgValue.textContent = this.value;
         });
 
-        // Handle image upload styling and filename display
         const imageUpload = document.getElementById('image-upload');
         const imageName = document.getElementById('image-name');
         const labelImage = document.getElementById('label-image');
@@ -296,7 +294,6 @@
             }
         });
 
-        // Handle video upload styling and filename display
         const videoUpload = document.getElementById('video-upload');
         const videoName = document.getElementById('video-name');
         const labelVideo = document.getElementById('label-video');
@@ -309,7 +306,6 @@
             }
         });
 
-        // Logika pengiriman data LANGSUNG ke API Magnific (Bypass Vercel Limit)
         const generateBtn = document.getElementById('generate-btn');
         const btnText = document.getElementById('btn-text');
         const resultSection = document.getElementById('result-section');
@@ -334,13 +330,6 @@
                 return;
             }
 
-            // Pengecekan ukuran file di frontend agar tidak membuang kuota/waktu
-            const totalSize = imageFile.size + videoFile.size;
-            if (totalSize > 115 * 1024 * 1024) {
-                alert('Total ukuran file terlalu besar! Maksimal 115MB (Gambar + Video).');
-                return;
-            }
-
             generateBtn.disabled = true;
             btnText.innerHTML = '<span class="spinner"></span> Processing Pipeline...';
             resultSection.classList.add('hidden');
@@ -353,34 +342,30 @@
                 formData.append('image', imageFile);
                 formData.append('video', videoFile);
 
-                // TEMBAK LANGSUNG KE ENDPOINT MAGNIFIC
-                const magnificApiUrl = 'https://api.magnific.ai/v1/motion'; 
-
-                const response = await fetch(magnificApiUrl, {
+                const response = await fetch('/api/generate', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${apiKey}`
+                        'x-user-api-key': apiKey
                     },
                     body: formData
                 });
 
-                // Membaca response sebagai text dulu untuk mencegah error JSON
                 const textResponse = await response.text();
                 let result;
                 
                 try {
                     result = JSON.parse(textResponse);
                 } catch (e) {
-                    throw new Error(`Server API merespons dengan format salah: ${textResponse.substring(0, 80)}...`);
+                    // LOGIKA UTAMA DIUBAH: Jika gagal jadi JSON, langsung bongkar isi teks balasan aslinya ke layar
+                    throw new Error(`Vercel membalas: ${textResponse.substring(0, 150)}...`);
                 }
 
                 resultSection.classList.remove('hidden');
                 
                 if (!response.ok) {
-                    throw new Error(result.message || result.error || `HTTP Error ${response.status}`);
+                    throw new Error(result.error || result.message || `HTTP Error ${response.status}`);
                 }
                 
-                // Tampilan Berhasil
                 resultTitle.textContent = "Pipeline Berhasil Dibuat!";
                 resultTitle.className = "text-lg font-bold text-green-400 mb-2";
                 resultSubtitle.textContent = "Task sedang diproses oleh server Magnific.";
@@ -400,15 +385,14 @@
             } catch (error) {
                 console.error('Error generating video:', error);
                 
-                // Tampilan Error
                 resultSection.classList.remove('hidden');
                 resultTitle.textContent = "Error System";
                 resultTitle.className = "text-lg font-bold text-red-500 mb-2";
                 resultSubtitle.textContent = "Gagal memproses permintaan.";
                 videoContainer.innerHTML = `
-                    <div class="text-red-400 p-4 text-sm font-mono text-center">
-                        ${error.message}<br>
-                        <span class="text-xs mt-2 block">(Cek console browser F12 untuk detail)</span>
+                    <div class="text-red-400 p-4 text-sm font-mono text-left break-all bg-black/30 rounded-xl border border-red-500/20">
+                        ${error.message}<br><br>
+                        <span class="text-xs text-gray-400 block mt-2">(Jika muncul teks HTML/404 dari Vercel, pastikan folder /api/generate.js sudah terunggah dengan benar di GitHub kamu)</span>
                     </div>
                 `;
                 resultSection.scrollIntoView({ behavior: 'smooth' });
