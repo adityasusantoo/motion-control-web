@@ -1,10 +1,8 @@
-// Konfigurasi agar Vercel menggunakan Edge Runtime (lebih cepat & support FormData)
 export const config = {
   runtime: 'edge',
 };
 
 export default async function handler(request) {
-  // Hanya izinkan request dengan metode POST
   if (request.method !== 'POST') {
     return new Response(
       JSON.stringify({ error: 'Method Not Allowed. Gunakan POST.' }), 
@@ -13,39 +11,49 @@ export default async function handler(request) {
   }
 
   try {
-    // 1. Ambil API Key dari header yang dikirim oleh index.html
     const apiKey = request.headers.get('x-user-api-key');
     if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: 'API Key tidak ditemukan di header request.' }), 
+        JSON.stringify({ error: 'API Key tidak ditemukan.' }), 
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    // 2. Ambil data Form (Gambar, Video, Prompt, dll) dari request HTML
     const formData = await request.formData();
 
     /* ==========================================
-       CATATAN PENTING:
-       Pastikan URL ini benar sesuai dokumentasi Magnific.
-       Misalnya: https://api.magnific.ai/v1/motion 
+       PASTIKAN URL INI BENAR!
+       Cek dokumentasi Magnific.ai untuk URL Motion API mereka.
        ========================================== */
-    const magnificApiUrl = 'https://api.magnific.ai/v1/motion';
+    const magnificApiUrl = 'https://api.magnific.ai/v1/motion'; 
 
-    // 3. Teruskan (Forward) request tersebut ke server API Magnific
     const magnificResponse = await fetch(magnificApiUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
-        // Jangan tambahkan Content-Type, biarkan fetch yang mengaturnya otomatis
       },
       body: formData
     });
 
-    // 4. Ambil balasan dari Magnific
-    const data = await magnificResponse.json();
+    // KITA BACA SEBAGAI TEKS DULU, JANGAN LANGSUNG JADIKAN JSON
+    const responseText = await magnificResponse.text();
 
-    // 5. Kembalikan balasan Magnific ke index.html kita
+    let data;
+    try {
+      // Coba ubah teks tersebut menjadi JSON
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      // Jika gagal (berarti Magnific mengirim HTML), tampilkan isi HTML-nya agar kita tahu errornya!
+      console.error("Bukan JSON! Respons dari Magnific:", responseText);
+      return new Response(
+        JSON.stringify({ 
+          error: `API Magnific mengirim HTML, bukan data. Status Kode: ${magnificResponse.status}. Cuplikan: ${responseText.substring(0, 100)}... Pastikan URL API sudah benar.` 
+        }), 
+        { status: 502, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Jika sukses jadi JSON, kirim balik ke website
     return new Response(JSON.stringify(data), {
       status: magnificResponse.status,
       headers: { 'Content-Type': 'application/json' }
