@@ -309,7 +309,7 @@
             }
         });
 
-        // Logika pengiriman data ke backend proxy Vercel
+        // Logika pengiriman data LANGSUNG ke API Magnific
         const generateBtn = document.getElementById('generate-btn');
         const btnText = document.getElementById('btn-text');
         const resultSection = document.getElementById('result-section');
@@ -334,6 +334,13 @@
                 return;
             }
 
+            // Pengecekan ukuran file di frontend agar tidak membuang kuota
+            const totalSize = imageFile.size + videoFile.size;
+            if (totalSize > 115 * 1024 * 1024) {
+                alert('Total ukuran file terlalu besar! Maksimal 115MB.');
+                return;
+            }
+
             generateBtn.disabled = true;
             btnText.innerHTML = '<span class="spinner"></span> Processing Pipeline...';
             resultSection.classList.add('hidden');
@@ -346,21 +353,31 @@
                 formData.append('image', imageFile);
                 formData.append('video', videoFile);
 
-                // Mengirim ke endpoint serverless Vercel lokal milikmu sendiri
-                const response = await fetch('/api/generate', {
+                // TEMBAK LANGSUNG KE MAGNIFIC
+                const magnificApiUrl = 'https://api.magnific.ai/v1/motion'; // GANTI JIKA URL-NYA BEDA
+
+                const response = await fetch(magnificApiUrl, {
                     method: 'POST',
                     headers: {
-                        'x-user-api-key': apiKey
+                        'Authorization': `Bearer ${apiKey}`
                     },
                     body: formData
                 });
 
-                const result = await response.json();
+                // Membaca response sebagai text dulu untuk mencegah error "Unexpected token"
+                const textResponse = await response.text();
+                let result;
+                
+                try {
+                    result = JSON.parse(textResponse);
+                } catch (e) {
+                    throw new Error(`Server API merespons dengan format salah: ${textResponse.substring(0, 50)}...`);
+                }
 
                 resultSection.classList.remove('hidden');
                 
                 if (!response.ok) {
-                    throw new Error(result.message || result.error || 'Terjadi kesalahan pada API');
+                    throw new Error(result.message || result.error || `HTTP Error ${response.status}`);
                 }
                 
                 resultTitle.textContent = "Pipeline Berhasil Dibuat!";
@@ -373,7 +390,7 @@
                         <span class="text-white bg-blue-900/50 px-4 py-2 rounded-lg inline-block my-2 border border-blue-500/30">
                             Task ID: ${result.id || result.task_id || 'N/A'}
                         </span><br><br>
-                        <span class="text-xs text-[#93A4C3]">(Silakan periksa dashboard Magnific Anda atau gunakan endpoint Get Task untuk melihat hasil video)</span>
+                        <span class="text-xs text-[#93A4C3]">(Silakan periksa dashboard Magnific Anda)</span>
                     </div>
                 `;
 
@@ -389,7 +406,7 @@
                 videoContainer.innerHTML = `
                     <div class="text-red-400 p-4 text-sm font-mono text-center">
                         ${error.message}<br>
-                        <span class="text-xs mt-2 block">(Cek console browser F12 untuk detail. Pastikan Vercel Serverless Function Anda berjalan dengan benar)</span>
+                        <span class="text-xs mt-2 block">(Cek console browser F12 untuk detail)</span>
                     </div>
                 `;
                 resultSection.scrollIntoView({ behavior: 'smooth' });
@@ -398,6 +415,3 @@
                 btnText.innerHTML = 'Initialize Generation Pipeline';
             }
         });
-    </script>
-</body>
-</html>
